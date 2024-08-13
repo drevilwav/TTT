@@ -19,12 +19,6 @@ function Gameboard() {
     return false;
   }
 
-  const printBoard = () => {
-    console.log(board.map(function(row) {
-      return row.join(' | ');
-    }).join('\n'));
-  }
-
   const checkWinner = () => {
     const lines = [
       [board[0][0], board[0][1], board[0][2]],
@@ -46,7 +40,7 @@ function Gameboard() {
     return null;
   }
 
-  return { getBoard, placeMarker, printBoard, checkWinner };
+  return { getBoard, placeMarker, checkWinner };
 }
 
 function GameController(playerOne = "Player One", playerTwo = "Player Two") {
@@ -71,37 +65,25 @@ function GameController(playerOne = "Player One", playerTwo = "Player Two") {
 
   const getActivePlayer = () => activePlayer;
 
-  const printNewRound = () => {
-    gameBoard.printBoard();
-    console.log(`${getActivePlayer().name}'s turn.`)
-  }
-
   const checkDraw = () => {
     return gameBoard.getBoard().flat().every(cell => cell !== '');
   }
 
   const playRound = (row, column) => {
-    console.log(`Placing ${getActivePlayer().name}'s marker at (${row}, ${column})...`);
     if (gameBoard.placeMarker(row, column, getActivePlayer().marker)) {
       const winner = gameBoard.checkWinner();
       if (winner) {
-        gameBoard.printBoard();
-        console.log(`${getActivePlayer().name} wins!`);
-        return;
+        return { status: "win", winner: getActivePlayer().name };
       }
       if (checkDraw()) {
-        gameBoard.printBoard();
-        console.log("It's a draw!");
-        return;
+        return {status: "draw" };
       }
       switchPlayer();
-      printNewRound();
+      return { status: 'continue', activePlayer: getActivePlayer().name };
     } else {
-      console.log("Invalid move, try again.");
+      return { status: 'invalid' };
     }
   }
-
-  printNewRound();
 
   return {
     playRound,
@@ -121,7 +103,7 @@ function ScreenController() {
     const board = game.getBoard();
     const activePlayer = game.getActivePlayer();
 
-    playerTurnDiv.textContent = `${activePlayer.name}'s turn...`;
+    playerTurnDiv.textContent = `${activePlayer.name} ходит...`;
 
     for (let rowIndex = 0; rowIndex < board.length; rowIndex++) {
       for (let columnIndex = 0; columnIndex < board[rowIndex].length; columnIndex++) {
@@ -139,8 +121,19 @@ function ScreenController() {
     const selectedRow = e.target.dataset.row;
     const selectedColumn = e.target.dataset.column;
     if (selectedRow === undefined || selectedColumn === undefined) return;
-    game.playRound(parseInt(selectedRow), parseInt(selectedColumn));
-    updateScreen();    
+    const result = game.playRound(parseInt(selectedRow), parseInt(selectedColumn));
+     if (result.status === 'win') {
+      updateScreen();
+      playerTurnDiv.textContent = `${result.winner} победил!`;
+    } else if (result.status === 'draw') {
+      updateScreen();
+      playerTurnDiv.textContent = "Ничья!";
+    } else if (result.status === 'invalid') {
+      updateScreen();
+      playerTurnDiv.textContent = "Неверный ход, попробуйте снова.";
+    } else {
+      updateScreen();
+    }
   }
 
   boardDiv.addEventListener("click", clickHandlerBoard);
